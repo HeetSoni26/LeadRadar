@@ -163,7 +163,23 @@ DEFAULT_CONFIG = {
         "нужен программист",
         "ищу веб-разработчика",
         "أحتاج مبرمج",
-        "مطلوب مبرمج"
+        "مطلوب مبرمج",
+        "website for my",
+        "site for my",
+        "app for my",
+        "store for my",
+        "page for my",
+        "who can build",
+        "who can make",
+        "who can develop",
+        "who can design",
+        "who can create",
+        "looking to hire",
+        "want to hire",
+        "anyone recommend",
+        "can anyone recommend",
+        "anyone know a developer",
+        "recommend someone"
     ],
     "block_keywords": [
         "[for hire]", "(for hire)", "[portfolio]", "hire me", "available for",
@@ -311,6 +327,43 @@ def has_tech_context(text: str) -> bool:
     return any(m in hay for m in TECH_MARKERS)
 
 
+# posts that SELL services ("do you need a website? i can build it") -
+# these are competitors advertising, not clients looking for help
+OFFER_RE = re.compile(
+    r"(\bdo you need\b|\byou need (a|an|your)\b|\byour (website|site|business|shop|store)\b|"
+    r"\bi (can|will|build|design|create|develop|make|offer|provide|speciali[sz]e)\b|"
+    r"\bi'?m (a|an) (web|app|software|full|freelance|wordpress|shopify|python)\b|"
+    r"\bi am (a|an) (web|app|software|full|freelance|wordpress|shopify|python)\b|"
+    r"\bwe (build|design|create|develop|offer|provide|speciali[sz]e|are)\b|"
+    r"\bdm me\b|\binbox me\b|\bcontact me\b|\bmy portfolio\b|\bour services\b|"
+    r"\bmy services\b|\blooking for (clients|projects|work|customers)\b|"
+    r"\btaking (orders|clients|commissions)\b|\baffordable\b|\bstarting at\b|"
+    r"\byears of experience\b|\bfree (consultation|quote|lance)\b|"
+    r"\bget your (website|site|store|app)\b|\bwe help\b|\blet us build\b|"
+    r"\bi work (with|as)\b|\bmy rates\b|\bcheck out my\b|\bvisit my\b)"
+)
+
+# posts that WANT to buy ("can anyone recommend...", "need a site for my bakery")
+SEEKER_RE = re.compile(
+    r"(\bcan anyone\b|\bdoes anyone\b|\banyone know\b|\bany recommendations?\b|"
+    r"\brecommend (a|an|me|some)\b|\bwho can\b|\blooking to hire\b|\bwant to hire\b|"
+    r"\bhiring\b|\bbudget\b|\bwilling to pay\b|\bi will pay\b|\bpaid work\b|"
+    r"\bhow much (does|would|should|do|is)\b|\bhow do i\b|\bhow can i\b|"
+    r"\bhelp me\b|\bfor my (bakery|shop|store|business|restaurant|cafe|brand|company|client|blog|gym|salon|startup)\b|"
+    r"\b(website|site|app|store|page) for my\b|\bneed .{0,30} for my\b|"
+    r"\bwe need\b|\bi need\b|\bi want\b|\bmy (business|shop|store|company|client) (needs?|wants?|is looking)\b|"
+    r"\banyone (recommend|knows?)\b|\brecommend someone\b|\bhire someone\b|\bto hire\b)"
+)
+
+
+def passes_intent(text: str) -> bool:
+    """Reject seller pitches; keep posts that read like a buyer asking."""
+    hay = norm_text(text)
+    if OFFER_RE.search(hay) and not SEEKER_RE.search(hay):
+        return False
+    return True
+
+
 def match_keywords(text: str, keywords: list[str], block: list[str]) -> list[str]:
     hay = norm_text(text)
     if not hay:
@@ -322,6 +375,10 @@ def match_keywords(text: str, keywords: list[str], block: list[str]) -> list[str
     # a generic phrase alone isn't enough - the post must also mention
     # something tech, else we catch dating ads and carpenters
     if hits and all(kw in GENERIC_PHRASES for kw in hits) and not has_tech_context(hay):
+        return []
+    # seller pitch ("do you need a website? i can build it") with no buyer
+    # signal = a competitor advertising, not a lead
+    if hits and not passes_intent(hay):
         return []
     return hits
 
@@ -434,8 +491,9 @@ def fetch_reddit_subreddits(cfg: dict) -> list[dict]:
                                   cfg["_keywords"], cfg["_block"])
             tags = [t for t in cfg["_hiring_tags"] if t in title_low]
             # a bare [Hiring] tag matches every industry - only keep it when
-            # the post looks tech-related
-            if tags and not hits and not has_tech_context(e["title"] + " " + snippet):
+            # the post looks tech-related and isn't a seller pitch
+            combined = e["title"] + " " + snippet
+            if tags and not hits and (not has_tech_context(combined) or not passes_intent(combined)):
                 tags = []
             if not hits and not tags:
                 continue
