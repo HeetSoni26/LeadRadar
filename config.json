@@ -1,0 +1,105 @@
+{
+  "poll_interval_minutes": 10,
+  "max_alerts_per_cycle": 15,
+  "hours_to_look_back": 24,
+  "keywords": [
+    "looking for a web developer",
+    "looking for a developer",
+    "need a web developer",
+    "need a website",
+    "need a website built",
+    "need a website for my",
+    "need a website created",
+    "want a website built",
+    "build me a website",
+    "build my website",
+    "recommend a web developer",
+    "web developer needed",
+    "website developer needed",
+    "developer needed for",
+    "looking for someone to build",
+    "looking for someone to make me",
+    "need someone to build",
+    "fix my website",
+    "website redesign",
+    "redesign my website",
+    "need an app built",
+    "looking for an app developer",
+    "app developer needed",
+    "shopify expert needed",
+    "need a shopify developer",
+    "shopify developer needed",
+    "wordpress developer needed",
+    "need a wordpress developer",
+    "woocommerce developer",
+    "need a python script",
+    "looking for a python developer",
+    "automation developer needed",
+    "hiring freelance web developer",
+    "freelance web developer needed",
+    "looking for freelance developer",
+    "landing page needed",
+    "need a landing page",
+    "busco desarrollador web",
+    "necesito una pagina web",
+    "necesito un programador",
+    "procuro programador",
+    "preciso de um site",
+    "cherche developpeur",
+    "besoin d'un site web",
+    "suche webentwickler",
+    "brauche eine webseite",
+    "нужен программист",
+    "ищу веб-разработчика",
+    "أحتاج مبرمج",
+    "مطلوب مبرمج"
+  ],
+  "block_keywords": [
+    "[for hire]", "(for hire)", "[portfolio]", "hire me", "available for",
+    "internship", "pirat", "free movies", "stream movies",
+    "download music", "torrent", "looking for a job", "job hunting"
+  ],
+  "hiring_tag_keywords": ["[hiring]", "(hiring)"],
+  "job_subreddits": [
+    "forhire", "NeedAWebsite", "jobbit", "webdevsforhire",
+    "DesignJobs", "b2bforhire", "gameDevClassifieds"
+  ],
+  "community_subreddits": [
+    "smallbusiness", "ecommerce", "shopify", "Entrepreneur",
+    "dropshipping", "nocode", "automation", "saas"
+  ],
+  "city_subreddits": [
+    "london", "nyc", "LosAngeles", "chicago", "toronto", "sydney",
+    "melbourne", "dubai", "singapore", "bangalore", "mumbai", "delhi",
+    "berlin", "amsterdam", "austin"
+  ],
+  "hn_enabled": true,
+  "discourse_forums": [
+    { "name": "Bubble Forum", "url": "https://forum.bubble.io" },
+    { "name": "Adalo Forum", "url": "https://forum.adalo.com" },
+    { "name": "Softr Community", "url": "https://community.softr.io" }
+  ],
+  "google_news": {
+    "enabled": false,
+    "phrases": [
+      "looking for a web developer",
+      "need a website built",
+      "web developer needed",
+      "hiring freelance web developer",
+      "busco desarrollador web"
+    ]
+  },
+  "bing_news": {
+    "enabled": false,
+    "phrases": [
+      "looking for a web developer",
+      "need a website built",
+      "web developer needed"
+    ]
+  },
+  "extra_rss_feeds": [],
+  "telegram": {
+    "bot_token": "",
+    "chat_id": ""
+  }
+}
