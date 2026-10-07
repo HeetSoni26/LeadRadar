@@ -69,7 +69,45 @@ _HOST_BLOCKED: dict[str, str] = {}
 class HostBlocked(Exception):
     """Site refused us (429/403) twice - skip it for the rest of this cycle."""
 
-CSV_HEADER = ["found_at_utc", "source", "title", "url", "matched", "snippet"]
+CSV_HEADER = ["found_at_local", "time_slot", "category", "source", "title",
+              "url", "matched_keywords", "snippet"]
+
+# checked in order - first hit wins
+CATEGORIES = [
+    ("App Development", ["app developer", "need an app", "an app built",
+                         "mobile app", "android app", "ios app",
+                         "app for my", "app for our", "make me an app"]),
+    ("E-commerce", ["shopify", "woocommerce", "ecommerce", "e-commerce",
+                    "online store", "dropship"]),
+    ("WordPress", ["wordpress"]),
+    ("Python & Automation", ["python", "automation", "script", "scraper",
+                             "scraping", "bot to", "zapier"]),
+    ("Website Development", ["website", "web developer", "web development",
+                             "web design", "landing page", "webpage",
+                             "web page", "site for", "web site"]),
+    ("General Development", ["looking for a developer", "developer needed",
+                             "hire a developer", "recommend a developer",
+                             "freelance developer", "need a developer",
+                             "a developer for", "replit developer"]),
+]
+
+
+def categorize(text: str) -> str:
+    hay = norm_text(text)
+    for label, markers in CATEGORIES:
+        if any(m in hay for m in markers):
+            return label
+    return "Other"
+
+
+def time_slot_label(dt: datetime) -> str:
+    """2-hour local bucket, e.g. 21:xx -> '08PM-10PM', 23:xx -> '10PM-12AM'."""
+    start = dt.hour - (dt.hour % 2)
+
+    def fmt(hour24: int) -> str:
+        return f"{hour24 % 12 or 12:02d}{'AM' if hour24 < 12 else 'PM'}"
+
+    return f"{fmt(start)}-{fmt(start + 2)}"
 
 DEFAULT_CONFIG = {
     "poll_interval_minutes": 10,
@@ -234,13 +272,16 @@ def make_lead(source, title, url, snippet, matched, guid) -> dict | None:
         return None
     key = f"{source}|{guid or url or title}"
     lead_id = hashlib.sha1(key.encode("utf-8", "replace")).hexdigest()[:16]
+    clean_title = strip_html(title) or "(no title)"
+    clean_snippet = (snippet or "")[:400]
     return {
         "id": lead_id,
         "source": source,
-        "title": strip_html(title) or "(no title)",
+        "title": clean_title,
         "url": (url or "").strip(),
-        "snippet": (snippet or "")[:400],
+        "snippet": clean_snippet,
         "matched": matched,
+        "category": categorize(f"{clean_title} {matched} {clean_snippet}"),
     }
 
 
@@ -592,6 +633,11 @@ def save_seen(seen: dict) -> None:
 
 def append_csv(leads: list[dict]) -> None:
     new_file = not LEADS_CSV_PATH.exists()
+    # old-format CSVs (pre-category columns) get migrated on first append
+    if not new_file:
+        migrate_csv_if_old()
+        new_file = not LEADS_CSV_PATH.exists()
+    now_local = datetime.now()
     try:
         with LEADS_CSV_PATH.open("a", newline="", encoding="utf-8-sig") as fh:
             writer = csv.writer(fh)
@@ -599,12 +645,43 @@ def append_csv(leads: list[dict]) -> None:
                 writer.writerow(CSV_HEADER)
             for lead in leads:
                 writer.writerow([
-                    datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+                    now_local.strftime("%Y-%m-%d %I:%M %p"),
+                    time_slot_label(now_local),
+                    lead.get("category", "Other"),
                     lead["source"], lead["title"], lead["url"],
                     lead["matched"], lead["snippet"],
                 ])
     except PermissionError:
         log("  leads.csv is open in Excel - close it so new rows can be saved")
+
+
+def migrate_csv_if_old() -> None:
+    try:
+        with LEADS_CSV_PATH.open(newline="", encoding="utf-8-sig") as fh:
+            rows = list(csv.reader(fh))
+    except Exception:
+        return
+    if not rows or rows[0][:3] == CSV_HEADER[:3]:
+        return  # already new format
+    log("  upgrading leads.csv to new column format")
+    with LEADS_CSV_PATH.open("w", newline="", encoding="utf-8-sig") as fh:
+        writer = csv.writer(fh)
+        writer.writerow(CSV_HEADER)
+        for row in rows[1:]:
+            if len(row) < 6:
+                continue
+            found_utc, source, title, url, matched, snippet = row[:6]
+            try:
+                dt = datetime.fromisoformat(found_utc.replace("Z", "+00:00"))
+                local = dt.astimezone()
+            except ValueError:
+                local = datetime.now()
+            writer.writerow([
+                local.strftime("%Y-%m-%d %I:%M %p"),
+                time_slot_label(local),
+                categorize(f"{title} {matched} {snippet}"),
+                source, title, url, matched, snippet,
+            ])
 
 
 # -------------------------------------------------------------- delivering

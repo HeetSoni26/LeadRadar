@@ -89,3 +89,26 @@ is running it as a scheduled job on **GitHub Actions** (free for public repos)
 - `leads.csv` — every lead found, ever (opens in Excel)
 - `seen.json` — memory so repeats are suppressed
 - `start_radar.bat` — double-click to run
+
+## leads.csv columns
+
+| Column | Meaning |
+|---|---|
+| `found_at_local` | when the radar found it, your local time — **sort newest-first in Excel to reply to the freshest leads first** |
+| `time_slot` | 2-hour bucket, e.g. `08PM-10PM`, `10PM-12AM` — group/filter leads by slot |
+| `category` | `Website Development`, `App Development`, `E-commerce`, `WordPress`, `Python & Automation`, `General Development`, or `Other` |
+| `source` | where it came from (Reddit r/forhire, Hacker News, forum name...) |
+| `title` / `url` | the post title and direct link |
+| `matched_keywords` | which of your keywords triggered the match |
+| `snippet` | first part of the post text |
+
+## 24x7 on GitHub Actions (already set up)
+
+The repo runs the radar every 10 minutes on GitHub's servers and pushes leads
+to Telegram + commits an updated `leads.csv` automatically — even when your
+PC is off. Setup: https://github.com/HeetSoni26/LeadRadar/actions
+
+- Telegram credentials live in GitHub **encrypted secrets** (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`), never in the repo.
+- `config.local.json` (gitignored) holds your local copy of those credentials.
+- To change keywords/subreddits: edit `config.json`, commit & push (or ask
+  GitHub CLI to do it). The next scheduled run picks it up automatically.
