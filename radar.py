@@ -168,7 +168,12 @@ DEFAULT_CONFIG = {
     "block_keywords": [
         "[for hire]", "(for hire)", "[portfolio]", "hire me", "available for",
         "internship", "pirat", "free movies", "stream movies",
-        "download music", "torrent", "looking for a job", "job hunting"
+        "download music", "torrent", "looking for a job", "job hunting",
+        "m4f", "f4m", "f4a", "tf4m", "m4a", "relationship", "vibe with",
+        "dating", "carpenter", "sawmill", "no experience needed",
+        "get paid to", "copy & paste", "copy and paste", "chatter",
+        "/ year]", "salary", "physical therapist", "singer", "vocalist",
+        "earn up to", "turn your charm"
     ],
     "hiring_tag_keywords": ["[hiring]", "(hiring)"],
     "job_subreddits": [
@@ -285,6 +290,27 @@ def make_lead(source, title, url, snippet, matched, guid) -> dict | None:
     }
 
 
+# phrases that can apply to non-tech things ("build a relationship",
+# "build a cabinet") - only accepted when tech context is present
+GENERIC_PHRASES = {
+    "looking for someone to build", "need someone to build",
+    "looking for someone to make me", "looking for a developer",
+    "looking for someone", "developer needed for"
+}
+
+TECH_MARKERS = (
+    "web", "site", "app", "developer", "software", "shopify", "wordpress",
+    "woocommerce", "python", "automation", "landing", "ecommerce",
+    "e-commerce", "backend", "frontend", "full-stack", "fullstack", " api",
+    "script", "bot", "tech", "startup", "saas", "program", "code", "dev"
+)
+
+
+def has_tech_context(text: str) -> bool:
+    hay = norm_text(text)
+    return any(m in hay for m in TECH_MARKERS)
+
+
 def match_keywords(text: str, keywords: list[str], block: list[str]) -> list[str]:
     hay = norm_text(text)
     if not hay:
@@ -292,7 +318,12 @@ def match_keywords(text: str, keywords: list[str], block: list[str]) -> list[str
     for b in block:
         if b and b in hay:
             return []
-    return [kw for kw in keywords if kw in hay]
+    hits = [kw for kw in keywords if kw in hay]
+    # a generic phrase alone isn't enough - the post must also mention
+    # something tech, else we catch dating ads and carpenters
+    if hits and all(kw in GENERIC_PHRASES for kw in hits) and not has_tech_context(hay):
+        return []
+    return hits
 
 
 # ------------------------------------------------------------ feed parsing
@@ -402,6 +433,10 @@ def fetch_reddit_subreddits(cfg: dict) -> list[dict]:
             hits = match_keywords(e["title"] + " " + snippet,
                                   cfg["_keywords"], cfg["_block"])
             tags = [t for t in cfg["_hiring_tags"] if t in title_low]
+            # a bare [Hiring] tag matches every industry - only keep it when
+            # the post looks tech-related
+            if tags and not hits and not has_tech_context(e["title"] + " " + snippet):
+                tags = []
             if not hits and not tags:
                 continue
             matched = ", ".join(hits + tags)
